@@ -1,4 +1,4 @@
-# ESP8266 MQTT Weather
+# ESP8266 MQTT Weather Station with [ESP8266-Arduino](https://github.com/esp8266/Arduino)
 * DSTH01 humidity sensor
 * BMP180 pressure & temperature sensor
 * ESP 8266 (e.g. [Adafruit HUZZAH](https://www.adafruit.com/products/2471))
