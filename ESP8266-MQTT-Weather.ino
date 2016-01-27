@@ -42,9 +42,9 @@
 #include "printDefn.h"
 /************************* WiFi Access Point *********************************/
 
-#define WLAN_SSID       "Radio Free Cathilya"
-#define WLAN_PASS       ""
-#define HOSTNAME       "espWeather01"
+#define WLAN_SSID  "Radio Free Cathilya"
+#define WLAN_PASS  ""
+#define HOSTNAME   "espWeather01"
 char localMAC[18];
 
 /************************* OTA updates *********************************/
@@ -54,7 +54,7 @@ const bool updateHttps = false;
 /************************* Adafruit.io Setup *********************************/
 
 #define AIO_SERVER      "io.adafruit.com"
-#define AIO_SERVERPORT  1883                   // use 8883 for SSL
+#define AIO_SERVERPORT  1883               // use 8883 for SSL
 #define AIO_USERNAME    "iggie"
 #define AIO_KEY         "13acf38e7da23a44509f362d4efa18c79429a483"
 
@@ -68,12 +68,12 @@ const int SCL_PIN   = 5;
 // setup the EEPROM and default conf
 const byte eeprom_magic = 0x43;
 struct eepromConf {
-  byte magic;
-  double VBAT_CAL_M;
-  double VBAT_CAL_B;
-  bool   heatedRH;
-  char OTA_MD5[33];
-  char bootReason[127];
+	byte magic;
+	double VBAT_CAL_M;
+	double VBAT_CAL_B;
+	bool   heatedRH;
+	char OTA_MD5[33];
+	char bootReason[127];
 };
 
 // resistor divider to divide-by-6:
@@ -92,12 +92,12 @@ struct eepromConf {
 // 866.900 5.19
 // y = 0.0059961786x + 0.0157485175
 const struct eepromConf eepromDefConf = {
-  eeprom_magic,
-  0.0059961786,
-  0.0157485175,
-  false,
-  "Non-OTA",
-  "Flash"
+	eeprom_magic,
+	0.0059961786,
+	0.0157485175,
+	false,
+	"Non-OTA",
+	"Flash"
 };
 struct eepromConf eepromConf;
 const int zeroMD5[16] = {0};
@@ -213,26 +213,26 @@ void setup() {
 
 	EEPROM.begin(4096);
 	EEPROM.get (0, eepromConf);
-  if (eepromConf.magic != eeprom_magic) {
-  	Debugprintf("Writing default conf...");
-  	EEPROM.put (0, eepromDefConf);
-  	EEPROM.commit();
-  	EEPROM.get (0, eepromConf);
-  	Debugprintf("New magic: %d\n", eepromConf.magic);
-  }
+	if (eepromConf.magic != eeprom_magic) {
+		Debugprintf("Writing default conf...");
+		EEPROM.put (0, eepromDefConf);
+		EEPROM.commit();
+		EEPROM.get (0, eepromConf);
+		Debugprintf("New magic: %d\n", eepromConf.magic);
+	}
 
 	Debugprintf("Weatherstation demo\n\n");
 
 	// Set up DIO
-  // Turn on I2C power
-  pinMode(I2c3v3Pin, OUTPUT);
-  digitalWrite(I2c3v3Pin,  LOW);
+	// Turn on I2C power
+	pinMode(I2c3v3Pin, OUTPUT);
+	digitalWrite(I2c3v3Pin, LOW);
 	// led1 on until wifi connects
-  pinMode(ledPin1, OUTPUT);
-	digitalWrite(ledPin1,  LOW);
+	pinMode(ledPin1, OUTPUT);
+	digitalWrite(ledPin1, LOW);
 	// led2 off
 	pinMode(ledPin2, OUTPUT);
-	digitalWrite(ledPin2,  HIGH);
+	digitalWrite(ledPin2, HIGH);
 
 	// Set up ADC pin
 	pinMode(A0, INPUT);
@@ -242,7 +242,7 @@ void setup() {
 	connectWiFi();
 
 	// Signal connection by turning off LED
-	digitalWrite(ledPin1,  HIGH);
+	digitalWrite(ledPin1, HIGH);
 
 	String mac = WiFi.macAddress();
 	mac.replace(':', '-');
@@ -257,8 +257,8 @@ void setup() {
 	MQTT_connect();
 
 	// Setup MQTT subscriptions.
-  mqtt.subscribe(&led1);
-  mqtt.subscribe(&heatedRH);
+	mqtt.subscribe(&led1);
+	mqtt.subscribe(&heatedRH);
 
 	// timed loop
 	mainTimer.setInterval(tick_ms, timedRepeat);
@@ -293,11 +293,11 @@ void setup() {
 		logFeedPrintf("DSTH01 initial startup failed: REBOOT");
 		nap();
 	}
-  if (eepromConf.heatedRH) {
-    I2C_DSTH01.enableHeater();
-  } else {
-    I2C_DSTH01.disableHeater();
-  }
+	if (eepromConf.heatedRH) {
+		I2C_DSTH01.enableHeater();
+	} else {
+		I2C_DSTH01.disableHeater();
+	}
 
 
 	Debugprintf("Starting loop...\n\n");
@@ -307,7 +307,7 @@ void setup() {
 
 void loop() {
 	// Ensure the connection to the MQTT server is alive (this will make the first
-	// connection and automatically reconnect when disconnected).  See the MQTT_connect
+	// connection and automatically reconnect when disconnected). See the MQTT_connect
 	// function definition further below.
 	MQTT_connect();
 	mainTimer.run();
@@ -365,153 +365,153 @@ void do_ADC () {
 }
 
 const int ledFlashTicks = 1000/tick_ms;
-int ledFlashState = 0;
-void doLEDflash() {
-  if (ledFlashState % ledFlashTicks == 0) {
-      digitalWrite(ledPin2,  LOW);
-  } else {
-      digitalWrite(ledPin2,  HIGH);
-  }
-  ledFlashState = (ledFlashState+1) % ledFlashTicks;
+	int ledFlashState = 0;
+	void doLEDflash() {
+
+	if (ledFlashState % ledFlashTicks == 0) {
+		digitalWrite(ledPin2, LOW);
+	} else {
+		digitalWrite(ledPin2, HIGH);
+	}
+	ledFlashState = (ledFlashState+1) % ledFlashTicks;
 }
 
 
 void do_I2C () {
-  double read_temp, read_pres, read_rh;
-  int I2Cerr;
+	double read_temp, read_pres, read_rh;
+	int I2Cerr;
 
-  if ( (I2Cerr = I2C_BMP180.getError()) ) {
-    if (I2C_BMP180.begin()) {
-      snprintf (snprintfBuf, snprintfBufLen, "BMP180 init success after I2C error %d", I2Cerr);
-      Debugprintf("%s\n",snprintfBuf);
-      log_feed.publish ( snprintfBuf );
-    } else {
-      snprintf (snprintfBuf, snprintfBufLen, "BMP180 init failed after I2C error %d: REBOOT", I2Cerr);
-      Debugprintf("%s\n",snprintfBuf);
-      log_feed.publish ( snprintfBuf );
-      nap();
-    }
-  }
-  switch (I2Cstate) {
-    case I2C_1:
-      I2C_BMP180.startTemperature();
-      I2C_DSTH01.startTemperature();
-      I2Cstate = I2C_2;
-    break;
+	if ( (I2Cerr = I2C_BMP180.getError()) ) {
+		if (I2C_BMP180.begin()) {
+			Debugprintf("BMP180 init success after I2C error %d\n", I2Cerr);
+			logFeedPrintf("BMP180 init success after I2C error %d", I2Cerr);
+		} else {
+			Debugprintf("BMP180 init failed after I2C error %d: REBOOT\n", I2Cerr);
+			logFeedPrintf("BMP180 init failed after I2C error %d: REBOOT", I2Cerr);
+			nap();
+		}
+	}
+	switch (I2Cstate) {
+	case I2C_1:
+		I2C_BMP180.startTemperature();
+		I2C_DSTH01.startTemperature();
+		I2Cstate = I2C_2;
+	break;
 
-    case I2C_2:
-      I2C_BMP180.getTemperature (read_temp);
-      temperature.add (read_temp);
-      I2C_DSTH01.readTemperature ();
-      // the constant 3 is the longest/most precise pressure reading, taking ~25ms.
-      I2C_BMP180.startPressure (3);
-      I2C_DSTH01.startHumidity ();
-      I2Cstate = I2C_3;
-    break;
+	case I2C_2:
+		I2C_BMP180.getTemperature (read_temp);
+		temperature.add (read_temp);
+		I2C_DSTH01.readTemperature ();
+		// the constant 3 is the longest/most precise pressure reading, taking ~25ms.
+		I2C_BMP180.startPressure (3);
+		I2C_DSTH01.startHumidity ();
+		I2Cstate = I2C_3;
+	break;
 
-    case I2C_3:
-      read_rh = I2C_DSTH01.readHumidity ();
-      humidity.add ( read_rh );
+	case I2C_3:
+		read_rh = I2C_DSTH01.readHumidity ();
+		humidity.add ( read_rh );
 
-      read_temp = temperature.mean();
-      I2C_BMP180.getPressure (read_pres, read_temp);
-      read_pres = I2C_BMP180.sealevel (read_pres, ALTITUDE);
-      pressure.add ( read_pres );
+		read_temp = temperature.mean();
+		I2C_BMP180.getPressure (read_pres, read_temp);
+		read_pres = I2C_BMP180.sealevel (read_pres, ALTITUDE);
+		pressure.add ( read_pres );
 
-      I2Cstate = I2C_1;
-      I2Ccycle++;
-    break;
+		I2Cstate = I2C_1;
+		I2Ccycle++;
+	break;
 
-    default:
-      nap (); // Some bad juju happen here
-    break;
-  }
+	default:
+		nap (); // Some bad juju happen here
+	break;
+	}
 }
 
 
 void doMQTT_Publish() {
-  if ( I2Ccycle && (I2Ccycle % I2C_Publish_Cycles == 0) ) {
-    // Now we can publish stuff!
-    dtostrf  ( temperature.mean(), 0, 2, snprintfBuf);
-    Debugprintf("Sending temperature %s...", snprintfBuf);
-    if (! temperature_feed.publish( snprintfBuf ) ) {
-      Debugprintf("Failed\n");
-    } else {
-      Debugprintf("OK!\n");
-    }
+	if ( I2Ccycle && (I2Ccycle % I2C_Publish_Cycles == 0) ) {
+		// Now we can publish stuff!
+		dtostrf ( temperature.mean(), 0, 2, snprintfBuf);
+		Debugprintf("Sending temperature %s...", snprintfBuf);
+		if (! temperature_feed.publish( snprintfBuf ) ) {
+			Debugprintf("Failed\n");
+		} else {
+			Debugprintf("OK!\n");
+		}
 
-    dtostrf  ( pressure.mean(), 0, 2, snprintfBuf);
-    Debugprintf("Sending pressure %s...", snprintfBuf);
-    if (! pressure_feed.publish(snprintfBuf) ) {
-      Debugprintf("Failed\n");
-    } else {
-      Debugprintf("OK!\n");
-    }
+		dtostrf ( pressure.mean(), 0, 2, snprintfBuf);
+		Debugprintf("Sending pressure %s...", snprintfBuf);
+		if (! pressure_feed.publish(snprintfBuf) ) {
+			Debugprintf("Failed\n");
+		} else {
+			Debugprintf("OK!\n");
+		}
 
-    dtostrf  ( Vbat.mean(), 0, 3, snprintfBuf);
-    Debugprintf("Sending Vbat %s...", snprintfBuf);
-    if (! Vbat_feed.publish(snprintfBuf) ) {
-      Debugprintf("Failed\n");
-    } else {
-      Debugprintf("OK!\n");
-    }
+		dtostrf ( Vbat.mean(), 0, 3, snprintfBuf);
+		Debugprintf("Sending Vbat %s...", snprintfBuf);
+		if (! Vbat_feed.publish(snprintfBuf) ) {
+			Debugprintf("Failed\n");
+		} else {
+			Debugprintf("OK!\n");
+		}
 
-    ADCprintf("\nVbat\tADC counts\n%.3f\t%.3f", Vbat.mean(), ADCcounts.mean());
+		ADCprintf("\nVbat\tADC counts\n%.3f\t%.3f", Vbat.mean(), ADCcounts.mean());
 
-    dtostrf  ( humidity.mean(), 0, 1, snprintfBuf);
-    Debugprintf("Sending RH %s...", snprintfBuf);
-    if (! humidity_feed.publish(snprintfBuf) ) {
-      Debugprintf("Failed\n");
-    } else {
-      Debugprintf("OK!\n");
-    }
+		dtostrf ( humidity.mean(), 0, 1, snprintfBuf);
+		Debugprintf("Sending RH %s...", snprintfBuf);
+		if (! humidity_feed.publish(snprintfBuf) ) {
+			Debugprintf("Failed\n");
+		} else {
+			Debugprintf("OK!\n");
+		}
 
-  // All that publishing! Time for a nap.
-  nap();
-  }
+		// All that publishing! Time for a nap.
+		nap();
+	}
 }
 
 void doMQTT_Subscriptions () {
-  int ledPin=-1;
-  // this is our 'wait for incoming subscription packets' busy subloop
-  // try to spend your time here
+	int ledPin=-1;
+	// this is our 'wait for incoming subscription packets' busy subloop
+	// try to spend your time here
 
-  Adafruit_MQTT_Subscribe *subscription;
-  while ((subscription = mqtt.readSubscription())) {
-    if (subscription == &led1) {
-      ledPin = ledPin1;
-    } else if (subscription == &heatedRH) {
-      if (! strcmp ((char *)subscription->lastread, "ON") ) {
-        eepromConf.heatedRH = true;
-        I2C_DSTH01.enableHeater();
-        updateEEPROM();
-      } else {
-        eepromConf.heatedRH = false;
-        I2C_DSTH01.disableHeater();
-        updateEEPROM();
-      }
-    }
+	Adafruit_MQTT_Subscribe *subscription;
+	while ((subscription = mqtt.readSubscription())) {
+		Debugprintf("Got '%s' from '%s' feed\n", (char *)subscription->lastread, (char *)subscription->topic);
+		logFeedPrintf("Got '%s' from '%s' feed", (char *)subscription->lastread, (char *)subscription->topic);
+		if (subscription == &led1) {
+			ledPin = ledPin1;
+		} else if (subscription == &heatedRH) {
+			if (! strcmp ((char *)subscription->lastread, "ON") ) {
+				eepromConf.heatedRH = true;
+				I2C_DSTH01.enableHeater();
+				updateEEPROM();
+			} else {
+				eepromConf.heatedRH = false;
+				I2C_DSTH01.disableHeater();
+				updateEEPROM();
+			}
+		}
 
-    if (ledPin >= 0 ) {
-      Debugprintf("LED %d: %s\n", ledPin, (char *)subscription->lastread);
-      if (! strcmp ((char *)subscription->lastread, "ON") ) {
-        digitalWrite(ledPin, LOW);
-      } else if (! strcmp ((char *)subscription->lastread, "OFF") ) {
-        digitalWrite(ledPin, HIGH);
-      }
-    }
-  }
-
+		if (ledPin >= 0 ) {
+			Debugprintf("LED %d: %s\n", ledPin, (char *)subscription->lastread);
+			if (! strcmp ((char *)subscription->lastread, "ON") ) {
+				digitalWrite(ledPin, LOW);
+			} else if (! strcmp ((char *)subscription->lastread, "OFF") ) {
+				digitalWrite(ledPin, HIGH);
+			}
+		}
+	}
 }
 
 
 void connectWiFi() {
-  Debugprintf("Connecting to %s\n", WLAN_SSID);
+	Debugprintf("Connecting to %s\n", WLAN_SSID);
 
-  WiFi.mode (WIFI_STA);
-  WiFi.hostname (HOSTNAME);
-  WiFi.begin (WLAN_SSID, WLAN_PASS);
-  int beginRetries = 5;
+	WiFi.mode (WIFI_STA);
+	WiFi.hostname (HOSTNAME);
+	WiFi.begin (WLAN_SSID, WLAN_PASS);
+	int beginRetries = 5;
 	while (beginRetries && WiFi.status() != WL_CONNECTED) {
 		delay(100);
 		int retries = 20;
@@ -537,74 +537,74 @@ void connectWiFi() {
 // Function to connect and reconnect as necessary to the MQTT server.
 // Should be called in the loop function and it will take care if connecting.
 void MQTT_connect() {
-  int8_t ret;
+	int8_t ret;
 
-  // Stop if already connected.
-  if (mqtt.connected()) {
-    return;
-  }
+	// Stop if already connected.
+	if (mqtt.connected()) {
+		return;
+	}
 
-  Debugprintf("Connecting to MQTT... ");
+	Debugprintf("Connecting to MQTT... ");
 
-  uint8_t retries = 5;
-  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-        
-    Serial.println(mqtt.connectErrorString(ret));
-    Debugprintf("\nRetrying MQTT connection in 5 seconds...\n");
-    mqtt.disconnect();
-    delay(5000);  // wait 5 seconds
-    retries--;
-    if (retries == 0) {
-      // basically die and wait for WDT to reset me
-      nap();
-    }
-  }
-  Debugprintf("MQTT Connected!\n");
+	uint8_t retries = 5;
+	while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+
+		Serial.println(mqtt.connectErrorString(ret));
+		Debugprintf("\nRetrying MQTT connection in 5 seconds...\n");
+		mqtt.disconnect();
+		delay(5000); // wait 5 seconds
+		retries--;
+		if (retries == 0) {
+			// basically die and wait for WDT to reset me
+			nap();
+		}
+	}
+	Debugprintf("MQTT Connected!\n");
 }
 
 void updateEEPROM () {
 //  struct eepromConf {
-//    byte magic;
-//    double VBAT_CAL_M;
-//    double VBAT_CAL_B;
-//    bool   heatedRH;
-//    char OTA_MD5[33];
-//    char bootReason[127];
+//  	byte magic;
+//  	double VBAT_CAL_M;
+//		double VBAT_CAL_B;
+//  	bool   heatedRH;
+//  	char OTA_MD5[33];
+//  	char bootReason[127];
 //  };
 
-  struct  eepromConf eepromConfTest;
-  EEPROM.get (0, eepromConfTest);
-  if ( (eepromConf.magic != eepromConfTest.magic) |
-    (eepromConf.VBAT_CAL_M != eepromConfTest.VBAT_CAL_M) |
-    (eepromConf.VBAT_CAL_B != eepromConfTest.VBAT_CAL_B) |
-    (eepromConf.heatedRH != eepromConfTest.heatedRH) |
-    (strncmp (eepromConf.OTA_MD5, eepromConfTest.OTA_MD5, sizeof(eepromConf.OTA_MD5)) ) |
-    (strncmp (eepromConf.bootReason, eepromConfTest.bootReason, sizeof(eepromConf.bootReason)) )
-    ) {
-      EEPROM.put (0, eepromConf);
-      EEPROM.commit();
-      EEPROM.get (0, eepromConf);
-      Debugprintf("Updated EEPROM");
-    }
+	struct eepromConf eepromConfTest;
+	EEPROM.get (0, eepromConfTest);
+	if ( (eepromConf.magic != eepromConfTest.magic) |
+		(eepromConf.VBAT_CAL_M != eepromConfTest.VBAT_CAL_M) |
+		(eepromConf.VBAT_CAL_B != eepromConfTest.VBAT_CAL_B) |
+		(eepromConf.heatedRH != eepromConfTest.heatedRH) |
+		(strncmp (eepromConf.OTA_MD5, eepromConfTest.OTA_MD5, sizeof(eepromConf.OTA_MD5)) ) |
+		(strncmp (eepromConf.bootReason, eepromConfTest.bootReason, sizeof(eepromConf.bootReason)) )
+		) {
+			EEPROM.put (0, eepromConf);
+			EEPROM.commit();
+			EEPROM.get (0, eepromConf);
+			Debugprintf("Updated EEPROM");
+		}
 }
 
 void nap() {
-  // Set up DIO
-  // Turn off I2C power & LEDs
-  if (!eepromConf.heatedRH)
-    digitalWrite(I2c3v3Pin,  HIGH);
-  digitalWrite(ledPin1,  HIGH);
-  digitalWrite(ledPin2,  HIGH);
+	// Set up DIO
+	// Turn off I2C power & LEDs
+	if (!eepromConf.heatedRH)
+		digitalWrite(I2c3v3Pin, HIGH);
+	digitalWrite(ledPin1, HIGH);
+	digitalWrite(ledPin2, HIGH);
 
 
-  I2Ccycle = 0;
-  temperature.reset();
-  pressure.reset();
-  humidity.reset();
-  Vbat.reset();
-  ADCcounts.reset();
+	I2Ccycle = 0;
+	temperature.reset();
+	pressure.reset();
+	humidity.reset();
+	Vbat.reset();
+	ADCcounts.reset();
 
-  mqtt.disconnect();
-  ESP.deepSleep( (1000 * 1000 * DEEP_SLEEP_SECS), WAKE_RF_DEFAULT);
+	mqtt.disconnect();
+	ESP.deepSleep( (1000 * 1000 * DEEP_SLEEP_SECS), WAKE_RF_DEFAULT);
 }
 

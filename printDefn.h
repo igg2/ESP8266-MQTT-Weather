@@ -40,13 +40,13 @@ bool feedPrintf_P(Adafruit_MQTT_Publish &feed,PGM_P format,...) {
 	char formatString[256], *ptr;
 	strncpy_P( formatString, format, sizeof(formatString) ); // copy in from program mem
 	// null terminate - leave last char since we might need it in worst case for result's \0
-	formatString[ sizeof(formatString)-2 ]='\0'; 
+	formatString[ sizeof(formatString)-2 ]='\0';
 	ptr=&formatString[ strlen(formatString)+1 ]; // our result buffer...
 	va_list args;
 	va_start (args,format);
 	vsnprintf(ptr, sizeof(formatString)-1-strlen(formatString), formatString, args );
 	va_end (args);
-	formatString[ sizeof(formatString)-1 ]='\0'; 
+	formatString[ sizeof(formatString)-1 ]='\0';
 	feed.publish(ptr);
 }
 
