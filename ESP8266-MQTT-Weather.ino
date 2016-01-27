@@ -275,13 +275,12 @@ void setup() {
 	} else {
 		// Oops, something went wrong, this is usually a connection problem,
 		// see the comments at the top of this sketch for the proper connections.
-		snprintf (snprintfBuf, snprintfBufLen, "BMP180 initial startup failed (error %d): REBOOT", I2C_BMP180.getError());
-		Debugprintf("%s\n",snprintfBuf);
-		log_feed.publish ( snprintfBuf );
+		Debugprintf("BMP180 initial startup failed (error %d): REBOOT\n", I2C_BMP180.getError());
+		logFeedPrintf("BMP180 initial startup failed (error %d): REBOOT", I2C_BMP180.getError());
 		nap();
 	}
-	Debugprintf("provided altitude: %s meters, ", dtostrf  ( ALTITUDE, 0, 1, snprintfBuf));
-	Debugprintf("%s feet\n", dtostrf  ( ALTITUDE*3.28084, 0, 1, snprintfBuf));
+	Debugprintf("provided altitude: %s meters, ", dtostrf ( ALTITUDE, 0, 1, snprintfBuf));
+	Debugprintf("%s feet\n", dtostrf ( ALTITUDE*3.28084, 0, 1, snprintfBuf));
  
 	// DSTH01 Humidity
 	// We read the onboard temperature to compensate for the humidity with the heater on.
@@ -290,9 +289,8 @@ void setup() {
 		// The sensor is detected. Lets carry on!
 		Debugprintf("\nDSTH01 detected\n"); 
 	} else {
-		snprintf (snprintfBuf, snprintfBufLen, "DSTH01 initial startup failed: REBOOT");
-		Debugprintf("%s\n",snprintfBuf);
-		log_feed.publish ( snprintfBuf );
+		Debugprintf("DSTH01 initial startup failed: REBOOT\n");
+		logFeedPrintf("DSTH01 initial startup failed: REBOOT");
 		nap();
 	}
   if (eepromConf.heatedRH) {
@@ -325,7 +323,7 @@ void loop() {
 
 void checkUpdate () {
 
-	snprintf_P (snprintfBuf, snprintfBufLen, PSTR("/ESP8266OTA/%s/%s/firmware.bin"), localMAC, eepromConf.OTA_MD5);
+	snprintf (snprintfBuf, snprintfBufLen, "/ESP8266OTA/%s/%s/firmware.bin", localMAC, eepromConf.OTA_MD5);
 	Debugprintf("Checking for update at http%s://%s%s\n", (updateHttps ? "s":""), updateServer, snprintfBuf);
 	Serial.flush();
 	int ret = ESPhttpUpdate.update(updateServer, 80, snprintfBuf);
@@ -344,17 +342,16 @@ void checkUpdate () {
 			Debugprintf("Updating MD5 from %s ... ", eepromConf.OTA_MD5);
 			Serial.flush();
 
-			snprintf (eepromConf.OTA_MD5, sizeof(eepromConf.OTA_MD5), "%s", Update.md5String().c_str());
-      updateEEPROM();
-			snprintf (snprintfBuf, snprintfBufLen, "eeprom MD5 updated to %s", eepromConf.OTA_MD5);
-			Debugprintf("%s\n",snprintfBuf);
+			strncpy (eepromConf.OTA_MD5, Update.md5String().c_str(), sizeof(eepromConf.OTA_MD5));
+			updateEEPROM();
+			Debugprintf("eeprom MD5 updated to %s\n", eepromConf.OTA_MD5);
 			Serial.flush();
-			log_feed.publish ( snprintfBuf );
-
+			delay (100);
+			logFeedPrintf("eeprom MD5 updated to %s", eepromConf.OTA_MD5);
 			delay (100);
 			ESP.restart();
-      break;
-  }
+			break;
+	}
 	delay (100);
 }
 
