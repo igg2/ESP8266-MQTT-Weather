@@ -102,15 +102,6 @@ const struct eepromConf eepromDefConf = {
 struct eepromConf eepromConf;
 const int zeroMD5[16] = {0};
 
-// the timer object
-SimpleTimer mainTimer;
-// ms between timer calls
-const int tick_ms = 50;
-// start at one to avoid doing too much in the first call
-int tickCount = 1;
-#define DEEP_SLEEP_SECS 60
-
-
 /************ I2C Sensor setup ******************/
 SFE_BMP180 I2C_BMP180;
 DSTH01     I2C_DSTH01;
@@ -120,11 +111,6 @@ int I2Cstate = 0;
 #define I2C_1  0
 #define I2C_2  1
 #define I2C_3  2
-
-// Number of complete I2C cycles to collect before publishing
-#define I2C_Sample_Seconds 3
-const int I2C_Publish_Cycles = (I2C_Sample_Seconds * 1000) / (tick_ms * I2C_NSTATES);
-int I2Ccycle = 0;
 
 // for BMP sensor
 CumulStats temperature;
@@ -137,6 +123,19 @@ CumulStats humidity;
 CumulStats Vbat;
 CumulStats A0raw;
 
+/************ Timing setup ******************/
+// the timer object
+SimpleTimer mainTimer;
+// ms between timer calls
+const int tick_ms = 50;
+// start at one to avoid doing too much in the first call
+int tickCount = 1;
+#define DEEP_SLEEP_SECS 60
+
+// Number of complete I2C cycles to collect before publishing
+#define I2C_Sample_Seconds 3
+const int I2C_Publish_Cycles = (I2C_Sample_Seconds * 1000) / (tick_ms * I2C_NSTATES);
+int I2Ccycle = 0;
 
 /************ Global State (you don't need to change this!) ******************/
 
@@ -602,13 +601,6 @@ void updateEEPROM () {
 }
 
 void nap() {
-	// Set up DIO
-	// Turn off I2C power & LEDs
-	if (!eepromConf.heatedRH)
-		digitalWrite(I2c3v3Pin, HIGH);
-	digitalWrite(ledPin1, HIGH);
-	digitalWrite(ledPin2, HIGH);
-
 
 	I2Ccycle = 0;
 	temperature.reset();
@@ -623,6 +615,7 @@ void nap() {
 		digitalWrite(I2c3v3Pin, HIGH);
 	digitalWrite(ledPin1, HIGH);
 	digitalWrite(ledPin2, HIGH);
+
 	mqtt.disconnect();
 	ESP.deepSleep( (1000 * 1000 * DEEP_SLEEP_SECS), WAKE_RF_DEFAULT);
 }
