@@ -486,21 +486,30 @@ void doMQTT_Publish() {
 
 void doMQTT_Subscriptions () {
 	int ledPin=-1;
+	bool isOnOff=false, isOn=false;
 	// this is our 'wait for incoming subscription packets' busy subloop
 	// try to spend your time here
 
 	Adafruit_MQTT_Subscribe *subscription;
 	while ((subscription = mqtt.readSubscription())) {
 		Debugprintf("Got '%s' from '%s' feed\n", (char *)subscription->lastread, cP(subscription->topic) );
-		logFeedPrintf("Got '%s' from '%s' feed", (char *)subscription->lastread, cP(subscription->topic) );
+		if (! strcmp ((char *)subscription->lastread, "ON") ) {
+			isOnOff = true;
+			isOn = true;
+		} else if (! strcmp ((char *)subscription->lastread, "OFF") ) {
+			isOnOff = true;
+			isOn = false;
+		}
 		if (subscription == &led1) {
 			ledPin = ledPin1;
 		} else if (subscription == &heatedRH) {
-			if (! strcmp ((char *)subscription->lastread, "ON") ) {
+			if (isOnOff && isOn && !eepromConf.heatedRH) {
+				logFeedPrintf("Turning ON RH heater" );
 				eepromConf.heatedRH = true;
 				I2C_DSTH01.enableHeater();
 				updateEEPROM();
-			} else {
+			} else if (isOnOff && !isOn && eepromConf.heatedRH) {
+				logFeedPrintf("Turning OFF RH heater" );
 				eepromConf.heatedRH = false;
 				I2C_DSTH01.disableHeater();
 				updateEEPROM();
@@ -509,9 +518,9 @@ void doMQTT_Subscriptions () {
 
 		if (ledPin >= 0 ) {
 			Debugprintf("LED %d: %s\n", ledPin, (char *)subscription->lastread);
-			if (! strcmp ((char *)subscription->lastread, "ON") ) {
+			if (isOnOff && isOn ) {
 				digitalWrite(ledPin, LOW);
-			} else if (! strcmp ((char *)subscription->lastread, "OFF") ) {
+			} else if (isOnOff && !isOn ) {
 				digitalWrite(ledPin, HIGH);
 			}
 		}
@@ -599,6 +608,7 @@ void updateEEPROM () {
 			EEPROM.commit();
 			EEPROM.get (0, eepromConf);
 			Debugprintf("Updated EEPROM\n");
+			logFeedPrintf("Updated EEPROM" );
 		}
 }
 
