@@ -257,7 +257,9 @@ void setup() {
 	// checkUpdate();
 
 	// Setup MQTT subscriptions.
-	mqtt.subscribe(&led1);
+	// Only one retained subscription allowed for now...
+	// Pending https://github.com/adafruit/Adafruit_MQTT_Library/issues/20
+//	mqtt.subscribe(&led1);
 	mqtt.subscribe(&heatedRH);
 
 	// Establish a connection to the broker
