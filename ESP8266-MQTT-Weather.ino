@@ -179,6 +179,9 @@ Adafruit_MQTT_Subscribe heatedRH = Adafruit_MQTT_Subscribe(&mqtt, HEATED_RH);
 
 const int snprintfBufLen = 128;
 char snprintfBuf[snprintfBufLen];
+// Used with printf() for the char format string
+#define cP(x) strncpy_P(snprintfBuf, x, sizeof(snprintfBuf))
+
 /*************************** Function Declarations ************************************/
 void checkUpdate();
 void connectWiFi();
@@ -254,13 +257,13 @@ void setup() {
 	// Check if there's an OTA update
 	// checkUpdate();
 
-	// Establish a connection to the broker
-	// We to do this in setup to log early sensor problems
-	MQTT_connect();
-
 	// Setup MQTT subscriptions.
 	mqtt.subscribe(&led1);
 	mqtt.subscribe(&heatedRH);
+
+	// Establish a connection to the broker
+	// We to do this in setup to log early sensor problems
+	MQTT_connect();
 
 	// timed loop
 	mainTimer.setInterval(tick_ms, timedRepeat);
@@ -487,8 +490,8 @@ void doMQTT_Subscriptions () {
 
 	Adafruit_MQTT_Subscribe *subscription;
 	while ((subscription = mqtt.readSubscription())) {
-		Debugprintf("Got '%s' from '%s' feed\n", (char *)subscription->lastread, (char *)subscription->topic);
-		logFeedPrintf("Got '%s' from '%s' feed", (char *)subscription->lastread, (char *)subscription->topic);
+		Debugprintf("Got '%s' from '%s' feed\n", (char *)subscription->lastread, cP(subscription->topic) );
+		logFeedPrintf("Got '%s' from '%s' feed", (char *)subscription->lastread, cP(subscription->topic) );
 		if (subscription == &led1) {
 			ledPin = ledPin1;
 		} else if (subscription == &heatedRH) {
@@ -594,7 +597,7 @@ void updateEEPROM () {
 			EEPROM.put (0, eepromConf);
 			EEPROM.commit();
 			EEPROM.get (0, eepromConf);
-			Debugprintf("Updated EEPROM");
+			Debugprintf("Updated EEPROM\n");
 		}
 }
 
@@ -614,7 +617,12 @@ void nap() {
 	Vbat.reset();
 	A0raw.reset();
 
+	// Set up DIO
+	// Turn off I2C power & LEDs
+	if (!eepromConf.heatedRH)
+		digitalWrite(I2c3v3Pin, HIGH);
+	digitalWrite(ledPin1, HIGH);
+	digitalWrite(ledPin2, HIGH);
 	mqtt.disconnect();
 	ESP.deepSleep( (1000 * 1000 * DEEP_SLEEP_SECS), WAKE_RF_DEFAULT);
 }
-
