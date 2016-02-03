@@ -79,7 +79,7 @@ struct eepromConf {
 // resistor divider to divide-by-6:
 // parallel 1M 5% to V+ (=500k), 100k 1% to GND
 // Calibration observations:
-// ADCcounts Vbat
+// A0raw Vbat
 //   0.0   0.0
 // 594.745 3.505
 // 595.908 3.516
@@ -135,7 +135,7 @@ CumulStats pressure;
 CumulStats humidity;
 // Vbat from ADC A0
 CumulStats Vbat;
-CumulStats ADCcounts;
+CumulStats A0raw;
 
 
 /************ Global State (you don't need to change this!) ******************/
@@ -166,6 +166,8 @@ const char HUMIDITY_FEED[] PROGMEM = AIO_USERNAME "/feeds/humidity";
 Adafruit_MQTT_Publish humidity_feed = Adafruit_MQTT_Publish(&mqtt, HUMIDITY_FEED);
 const char VBAT_FEED[] PROGMEM = AIO_USERNAME "/feeds/Vbat";
 Adafruit_MQTT_Publish Vbat_feed = Adafruit_MQTT_Publish(&mqtt, VBAT_FEED);
+const char A0RAW_FEED[] PROGMEM = AIO_USERNAME "/feeds/A0raw";
+Adafruit_MQTT_Publish A0raw_feed = Adafruit_MQTT_Publish(&mqtt, A0RAW_FEED);
 const char LOG_FEED[] PROGMEM = AIO_USERNAME "/feeds/log";
 Adafruit_MQTT_Publish log_feed = Adafruit_MQTT_Publish(&mqtt, LOG_FEED);
 
@@ -359,7 +361,7 @@ void do_ADC () {
 	double adc_read;
 
 	adc_read = analogRead(A0);
-	ADCcounts.add ( adc_read );
+	A0raw.add ( adc_read );
 	adc_read = ( adc_read * eepromConf.VBAT_CAL_M ) + eepromConf.VBAT_CAL_B;
 	Vbat.add ( adc_read );
 }
@@ -455,7 +457,15 @@ void doMQTT_Publish() {
 			Debugprintf("OK!\n");
 		}
 
-		ADCprintf("\nVbat\tADC counts\n%.3f\t%.3f", Vbat.mean(), ADCcounts.mean());
+		dtostrf ( A0raw.mean(), 0, 3, snprintfBuf);
+		Debugprintf("Sending A0raw %s...", snprintfBuf);
+		if (! A0raw_feed.publish(snprintfBuf) ) {
+			Debugprintf("Failed\n");
+		} else {
+			Debugprintf("OK!\n");
+		}
+
+		ADCprintf("\nVbat\tADC counts\n%.3f\t%.3f", Vbat.mean(), A0raw.mean());
 
 		dtostrf ( humidity.mean(), 0, 1, snprintfBuf);
 		Debugprintf("Sending RH %s...", snprintfBuf);
@@ -602,7 +612,7 @@ void nap() {
 	pressure.reset();
 	humidity.reset();
 	Vbat.reset();
-	ADCcounts.reset();
+	A0raw.reset();
 
 	mqtt.disconnect();
 	ESP.deepSleep( (1000 * 1000 * DEEP_SLEEP_SECS), WAKE_RF_DEFAULT);
