@@ -44,7 +44,7 @@
 
 #define WLAN_SSID  "Radio Free Cathilya"
 #define WLAN_PASS  ""
-#define HOSTNAME   "espWeather01"
+#define HOSTNAME   "espWeather-"           // Last byte of MAC as hex will be added on the end
 char localMAC[18];
 
 /************************* OTA updates *********************************/
@@ -59,14 +59,14 @@ const bool updateHttps = false;
 #define AIO_KEY         "13acf38e7da23a44509f362d4efa18c79429a483"
 
 /************************* Pin Setup *********************************/
-const int ledPin1   = 0;      // the number of the Red LED pin
-const int ledPin2   = 2;      // the number of the Blue LED pin
+const int ledPin1   = BUILTIN_LED;  // the Blue LED on the module
+// const int ledPin2   = 0;      // the number of the Red LED pin on HUZZAH
 const int I2c3v3Pin = 13;     // pin with PFET controlling I2C V+
 const int SDA_PIN   = 4;
 const int SCL_PIN   = 5;
 
 // setup the EEPROM and default conf
-const byte eeprom_magic = 0x43;
+const byte eeprom_magic = 0x42;
 struct eepromConf {
 	byte magic;
 	double VBAT_CAL_M;
@@ -91,10 +91,19 @@ struct eepromConf {
 // 861.550 5.18
 // 866.900 5.19
 // y = 0.0059961786x + 0.0157485175
+/*
+	679.733  4.72
+	473.100 3.289
+	505.500 3.531
+	y = .006891598368 x + .01263030107
+	y = 6.891598368·10-3 x + 3.714500129·10-2
+*/
 const struct eepromConf eepromDefConf = {
 	eeprom_magic,
-	0.0059961786,
-	0.0157485175,
+//	0.0059961786,
+//	0.0157485175,
+	.006891598368,
+	.03714500129,
 	false,
 	"Non-OTA",
 	"Flash"
@@ -202,6 +211,7 @@ void timedRepeat () {
 	tickCount++;
 	do_ADC();
 	do_I2C();
+//	I2Ccycle++;
 	doMQTT_Publish();
 	doMQTT_Subscriptions();
 	doLEDflash();
@@ -235,8 +245,8 @@ void setup() {
 	pinMode(ledPin1, OUTPUT);
 	digitalWrite(ledPin1, LOW);
 	// led2 off
-	pinMode(ledPin2, OUTPUT);
-	digitalWrite(ledPin2, HIGH);
+	// pinMode(ledPin2, OUTPUT);
+	// digitalWrite(ledPin2, HIGH);
 
 	// Set up ADC pin
 	pinMode(A0, INPUT);
@@ -247,10 +257,6 @@ void setup() {
 
 	// Signal connection by turning off LED
 	digitalWrite(ledPin1, HIGH);
-
-	String mac = WiFi.macAddress();
-	mac.replace(':', '-');
-	snprintf (localMAC, sizeof(localMAC), "%s", mac.c_str());
 	Debugprintf("\nWiFi connected, IP: %d.%d.%d.%d, MAC: %s\n", WiFi.localIP()[0], WiFi.localIP()[1], WiFi.localIP()[2], WiFi.localIP()[3], localMAC);
 	
 	// Check if there's an OTA update
@@ -366,8 +372,12 @@ void do_ADC () {
 
 	adc_read = analogRead(A0);
 	A0raw.add ( adc_read );
+//	Debugprintf("ADC raw %4s ",dtostrf ( adc_read, 0, 0, snprintfBuf));
+
 	adc_read = ( adc_read * eepromConf.VBAT_CAL_M ) + eepromConf.VBAT_CAL_B;
 	Vbat.add ( adc_read );
+//	Debugprintf("cal %7s\n",dtostrf ( adc_read, 0, 3, snprintfBuf));
+
 }
 
 const int ledFlashTicks = 1000/tick_ms;
@@ -375,9 +385,9 @@ const int ledFlashTicks = 1000/tick_ms;
 	void doLEDflash() {
 
 	if (ledFlashState % ledFlashTicks == 0) {
-		digitalWrite(ledPin2, LOW);
+		digitalWrite(ledPin1, LOW);
 	} else {
-		digitalWrite(ledPin2, HIGH);
+		digitalWrite(ledPin1, HIGH);
 	}
 	ledFlashState = (ledFlashState+1) % ledFlashTicks;
 }
@@ -532,7 +542,12 @@ void connectWiFi() {
 	Debugprintf("Connecting to %s\n", WLAN_SSID);
 
 	WiFi.mode (WIFI_STA);
-	WiFi.hostname (HOSTNAME);
+	
+	String mac = WiFi.macAddress();
+	mac.replace(':', '-');
+	snprintf (localMAC, sizeof(localMAC), "%s", mac.c_str());
+
+	WiFi.hostname (HOSTNAME+mac.substring( mac.length() - 2 ));
 	WiFi.begin (WLAN_SSID, WLAN_PASS);
 	int beginRetries = 5;
 	while (beginRetries && WiFi.status() != WL_CONNECTED) {
@@ -626,7 +641,7 @@ void nap() {
 	if (!eepromConf.heatedRH)
 		digitalWrite(I2c3v3Pin, HIGH);
 	digitalWrite(ledPin1, HIGH);
-	digitalWrite(ledPin2, HIGH);
+//	digitalWrite(ledPin2, HIGH);
 
 	mqtt.disconnect();
 	ESP.deepSleep( (1000 * 1000 * DEEP_SLEEP_SECS), WAKE_RF_DEFAULT);
