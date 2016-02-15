@@ -52,7 +52,6 @@ const bool updateHttps = false;
 #define updateServer "cathilya2.home.cathilya.org"
 
 /************************* Adafruit.io Setup *********************************/
-
 // #define AIO_SERVER      "io.adafruit.com"
 // #define AIO_SERVERPORT  1883               // use 8883 for SSL
 // #define AIO_USERNAME    "iggie"
@@ -97,6 +96,7 @@ struct eepromConf {
 // 866.900 5.19
 // y = 0.0059961786x + 0.0157485175
 /*
+ * D1 mini from WeMos.cc has a divider already for a 3.3V input
 	679.733  4.72
 	473.100 3.289
 	505.500 3.531
@@ -216,7 +216,6 @@ void timedRepeat () {
 	tickCount++;
 	do_ADC();
 	do_I2C();
-//	I2Ccycle++;
 	doMQTT_Publish();
 	doMQTT_Subscriptions();
 	doLEDflash();
