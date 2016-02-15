@@ -53,10 +53,15 @@ const bool updateHttps = false;
 
 /************************* Adafruit.io Setup *********************************/
 
-#define AIO_SERVER      "io.adafruit.com"
+// #define AIO_SERVER      "io.adafruit.com"
+// #define AIO_SERVERPORT  1883               // use 8883 for SSL
+// #define AIO_USERNAME    "iggie"
+// #define AIO_KEY         "13acf38e7da23a44509f362d4efa18c79429a483"
+
+#define AIO_SERVER      "iot.home.cathilya.org"
 #define AIO_SERVERPORT  1883               // use 8883 for SSL
-#define AIO_USERNAME    "iggie"
-#define AIO_KEY         "13acf38e7da23a44509f362d4efa18c79429a483"
+#define AIO_USERNAME    ""
+#define AIO_KEY         ""
 
 /************************* Pin Setup *********************************/
 const int ledPin1   = BUILTIN_LED;  // the Blue LED on the module
@@ -588,12 +593,12 @@ void MQTT_connect() {
 	while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
 
 		Serial.println(mqtt.connectErrorString(ret));
-		Debugprintf("\nRetrying MQTT connection in 5 seconds...\n");
+		Debugprintf("\nRetrying MQTT connection in 5 seconds...");
 		mqtt.disconnect();
 		delay(5000); // wait 5 seconds
 		retries--;
 		if (retries == 0) {
-			// basically die and wait for WDT to reset me
+			Debugprintf("\nGiving up on MQTT. Sleep & Reboot\n");
 			nap();
 		}
 	}
