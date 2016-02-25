@@ -42,10 +42,11 @@
 #include "printDefn.h"
 /************************* WiFi Access Point *********************************/
 
-#define WLAN_SSID  "Radio Free Cathilya"
-#define WLAN_PASS  ""
-#define HOSTNAME   "espWeather-"           // Last byte of MAC as hex will be added on the end
+#define WLAN_SSID    "Radio Free Cathilya"
+#define WLAN_PASS    ""
+#define HOSTNAME_PRE "EspWeather-BME280-"           // Last byte of MAC as hex will be added on the end
 char localMAC[18];
+String HOSTNAME = HOSTNAME_PRE+WiFi.macAddress().substring( WiFi.macAddress().length() - 2 );
 
 /************************* OTA updates *********************************/
 const bool updateHttps = false;
@@ -71,12 +72,15 @@ const int SCL_PIN   = 5;
 
 // setup the EEPROM and default conf
 const byte eeprom_magic = 0x42;
+#define FIRMWARE_VERSION "0.1.6"
+// this gets set if stored EEPROM.version differs from that in #define FIRMWARE_VERSION
+bool firmwareUpdated = false;
 struct eepromConf {
 	byte magic;
+	char version[16];
 	double VBAT_CAL_M;
 	double VBAT_CAL_B;
 	bool   heatedRH;
-	char OTA_MD5[33];
 	char bootReason[127];
 };
 
@@ -96,7 +100,7 @@ struct eepromConf {
 // 866.900 5.19
 // y = 0.0059961786x + 0.0157485175
 /*
- * D1 mini from WeMos.cc has a divider already for a 3.3V input
+ * WeMos.cc has a divider already for a 3.3V input
 	679.733  4.72
 	473.100 3.289
 	505.500 3.531
@@ -105,12 +109,12 @@ struct eepromConf {
 */
 const struct eepromConf eepromDefConf = {
 	eeprom_magic,
+	FIRMWARE_VERSION,
 //	0.0059961786,
 //	0.0157485175,
 	0.006907648921,
 	0.03130336373,
 	false,
-	"Non-OTA",
 	"Flash"
 };
 struct eepromConf eepromConf;
@@ -165,7 +169,7 @@ const char MQTT_USERNAME[] PROGMEM  = AIO_USERNAME;
 const char MQTT_PASSWORD[] PROGMEM  = AIO_KEY;
 
 // Setup the MQTT client class by passing in the WiFi client and MQTT server and login details.
-Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, AIO_SERVERPORT, MQTT_USERNAME, MQTT_PASSWORD);
+Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, AIO_SERVERPORT, HOSTNAME.c_str(), MQTT_USERNAME, MQTT_PASSWORD);
 
 /****************************** MQTT Feeds ***************************************/
 
@@ -204,6 +208,7 @@ void do_I2C ();
 void doMQTT_Publish();
 void doLEDflash();
 void MQTT_connect ();
+void setupEEPROM ();
 void updateEEPROM ();
 void nap();
 
@@ -229,17 +234,9 @@ void setup() {
 
 	delay(10);
 
-	EEPROM.begin(4096);
-	EEPROM.get (0, eepromConf);
-	if (eepromConf.magic != eeprom_magic) {
-		Debugprintf("Writing default conf...");
-		EEPROM.put (0, eepromDefConf);
-		EEPROM.commit();
-		EEPROM.get (0, eepromConf);
-		Debugprintf("New magic: %d\n", eepromConf.magic);
-	}
+	setupEEPROM();
 
-	Debugprintf("Weatherstation demo\n\n");
+	Debugprintf("\n\n\nWeatherstation demo v%s\n\n",eepromConf.version);
 
 	// Set up DIO
 	// Turn on I2C power
@@ -264,7 +261,7 @@ void setup() {
 	Debugprintf("\nWiFi connected, IP: %d.%d.%d.%d, MAC: %s\n", WiFi.localIP()[0], WiFi.localIP()[1], WiFi.localIP()[2], WiFi.localIP()[3], localMAC);
 	
 	// Check if there's an OTA update
-	// checkUpdate();
+	checkUpdate();
 
 	// Setup MQTT subscriptions.
 	// Only one retained subscription allowed for now...
@@ -275,6 +272,9 @@ void setup() {
 	// Establish a connection to the broker
 	// We to do this in setup to log early sensor problems
 	MQTT_connect();
+	if (firmwareUpdated) {
+		logFeedPrintf("Firmware on %s updated to v%s",localMAC,eepromConf.version);
+	}
 
 	// timed loop
 	mainTimer.setInterval(tick_ms, timedRepeat);
@@ -339,7 +339,7 @@ void loop() {
 
 void checkUpdate () {
 
-	snprintf (snprintfBuf, snprintfBufLen, "/ESP8266OTA/%s/%s/firmware.bin", localMAC, eepromConf.OTA_MD5);
+	snprintf (snprintfBuf, snprintfBufLen, "/ESP8266OTA/%s/v%s/firmware.bin", localMAC, eepromConf.version);
 	Debugprintf("Checking for update at http%s://%s%s\n", (updateHttps ? "s":""), updateServer, snprintfBuf);
 	Serial.flush();
 	int ret = ESPhttpUpdate.update(updateServer, 80, snprintfBuf);
@@ -355,15 +355,13 @@ void checkUpdate () {
 			break;
 		case HTTP_UPDATE_OK:
 			Debugprintf("[update] Update ok.\n");
-			Debugprintf("Updating MD5 from %s ... ", eepromConf.OTA_MD5);
 			Serial.flush();
 
-			strncpy (eepromConf.OTA_MD5, Update.md5String().c_str(), sizeof(eepromConf.OTA_MD5));
 			updateEEPROM();
-			Debugprintf("eeprom MD5 updated to %s\n", eepromConf.OTA_MD5);
+			Debugprintf("firmware updated to %s\n", eepromConf.version);
 			Serial.flush();
 			delay (100);
-			logFeedPrintf("eeprom MD5 updated to %s", eepromConf.OTA_MD5);
+			logFeedPrintf("firmware updated to %s", eepromConf.version);
 			delay (100);
 			ESP.restart();
 			break;
@@ -544,14 +542,13 @@ void doMQTT_Subscriptions () {
 
 void connectWiFi() {
 	Debugprintf("Connecting to %s\n", WLAN_SSID);
+	strncpy (localMAC, WiFi.macAddress().c_str(), sizeof(localMAC) );
+	char *chp = localMAC;
+	while (*chp++) if (*chp == ':') *chp = '-';
 
 	WiFi.mode (WIFI_STA);
 	
-	String mac = WiFi.macAddress();
-	mac.replace(':', '-');
-	snprintf (localMAC, sizeof(localMAC), "%s", mac.c_str());
-
-	WiFi.hostname (HOSTNAME+mac.substring( mac.length() - 2 ));
+	WiFi.hostname (HOSTNAME);
 	WiFi.begin (WLAN_SSID, WLAN_PASS);
 	int beginRetries = 5;
 	while (beginRetries && WiFi.status() != WL_CONNECTED) {
@@ -592,7 +589,7 @@ void MQTT_connect() {
 	while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
 
 		Serial.println(mqtt.connectErrorString(ret));
-		Debugprintf("\nRetrying MQTT connection in 5 seconds...");
+		Debugprintf("\nRetrying MQTT connection in 5 seconds...\n");
 		mqtt.disconnect();
 		delay(5000); // wait 5 seconds
 		retries--;
@@ -602,6 +599,27 @@ void MQTT_connect() {
 		}
 	}
 	Debugprintf("MQTT Connected!\n");
+}
+
+void setupEEPROM () {
+	EEPROM.begin(4096);
+	EEPROM.get (0, eepromConf);
+	if (eepromConf.magic != eeprom_magic) {
+		Debugprintf("Writing default conf...");
+		EEPROM.put (0, eepromDefConf);
+		EEPROM.commit();
+		EEPROM.get (0, eepromConf);
+		Debugprintf("New magic: %d\n", eepromConf.magic);
+	}
+	if ( strcmp(eepromConf.version,FIRMWARE_VERSION) ) {
+		strcpy (eepromConf.version, FIRMWARE_VERSION);
+		EEPROM.put (0, eepromConf);
+		EEPROM.commit();
+		EEPROM.get (0, eepromConf);
+		Debugprintf("Updated firmware to %s...", eepromConf.version);
+		firmwareUpdated = true;
+
+	}
 }
 
 void updateEEPROM () {
@@ -617,10 +635,10 @@ void updateEEPROM () {
 	struct eepromConf eepromConfTest;
 	EEPROM.get (0, eepromConfTest);
 	if ( (eepromConf.magic != eepromConfTest.magic) |
+		(strncmp (eepromConf.version, eepromConfTest.version, sizeof(eepromConf.version)) ) |
 		(eepromConf.VBAT_CAL_M != eepromConfTest.VBAT_CAL_M) |
 		(eepromConf.VBAT_CAL_B != eepromConfTest.VBAT_CAL_B) |
 		(eepromConf.heatedRH != eepromConfTest.heatedRH) |
-		(strncmp (eepromConf.OTA_MD5, eepromConfTest.OTA_MD5, sizeof(eepromConf.OTA_MD5)) ) |
 		(strncmp (eepromConf.bootReason, eepromConfTest.bootReason, sizeof(eepromConf.bootReason)) )
 		) {
 			EEPROM.put (0, eepromConf);
