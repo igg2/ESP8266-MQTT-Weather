@@ -355,6 +355,7 @@ void checkUpdate () {
 			break;
 		case HTTP_UPDATE_OK:
 			Debugprintf("[update] Update ok.\n");
+			Debugprintf("Updating firmware from %s ... ", eepromConf.version);
 			Serial.flush();
 
 			updateEEPROM();
